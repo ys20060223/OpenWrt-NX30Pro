@@ -19,12 +19,11 @@ env:
   REPO_BRANCH: master                              # 分支名称
   FEEDS_CONF: feeds.conf.default                   # 源配置文件
   CONFIG_FILE: .config                             # 配置文件
+  DIY_P1_SH: diy-part1.sh                          # 第一部分自定义脚本
+  DIY_P2_SH: diy-part2.sh                          # 第二部分自定义脚本
   UPLOAD_BIN_DIR: true                             # 是否上传bin目录
   UPLOAD_FIRMWARE: true                            # 是否上传固件
   UPLOAD_RELEASE: true                             # 是否上传到Release
-  DIY_P1_SH: diy-part1.sh                          # 第一部分自定义脚本
-  DIY_P2_SH: diy-part2.sh                          # 第二部分自定义脚本
-  CLASH_CORE: clash-core.sh                        # Clash 核心脚本
   TZ: Asia/Shanghai                                # 时区设置
 
 # 定义构建作业
@@ -69,12 +68,13 @@ jobs:
         ccache: 'true'
         prefix: ${{ github.workspace }}/openwrt
 
-    # 前置设置
-    - name: 前置设置
-      if: steps.checkNeed.outputs.status == 'success'
+    - name: Load custom feeds  # 加载自定义feeds
       run: |
+        # 如果存在自定义feeds配置文件，则移动到openwrt目录
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        # 赋予执行权限
         chmod +x $DIY_P1_SH
+        # 进入openwrt目录并执行自定义脚本
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
 
@@ -82,23 +82,17 @@ jobs:
       run: |
         cd openwrt
         ./scripts/feeds update -a && ./scripts/feeds install -a
-
-    # 后置设置
-    - name: 后置设置
-      if: steps.checkNeed.outputs.status == 'success'
+     
+    - name: Load custom configuration# 加载自定义配置
       run: |
+        # 如果存在自定义文件，则移动到openwrt目录
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
+        # 赋予执行权限
         chmod +x $DIY_P2_SH
+        # 进入openwrt目录并执行自定义脚本
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
-        
-    - name: SSH connection to Actions  # SSH连接到Actions
-      uses: P3TERX/ssh2actions@v1.0.0
-      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
-      env:
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
     - name: Download package  # 下载软件包
       id: package
