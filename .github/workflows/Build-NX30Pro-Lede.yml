@@ -23,7 +23,6 @@ env:
   UPLOAD_FIRMWARE: true                            # 是否上传固件
   UPLOAD_RELEASE: true                             # 是否上传到Release
   DIY_P1_SH: diy-part1.sh                          # 第一部分自定义脚本
-  DIY_SH: diy.sh
   DIY_P2_SH: diy-part2.sh                          # 第二部分自定义脚本
   CLASH_CORE: clash-core.sh                        # Clash 核心脚本
   TZ: Asia/Shanghai                                # 时区设置
@@ -84,12 +83,6 @@ jobs:
         cd openwrt
         ./scripts/feeds update -a && ./scripts/feeds install -a
 
-    - name: File Diy Patch  # 应用自定义补丁
-      run: |
-        chmod +x $DIY_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_SH
-
     # 后置设置
     - name: 后置设置
       if: steps.checkNeed.outputs.status == 'success'
@@ -99,15 +92,7 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
-
-    # 下载 Clash 核心
-    - name: clash core Download
-      if: steps.checkNeed.outputs.status == 'success'
-      run: |
-        [ -e files ] && mv files openwrt/files
-        cd openwrt
-        chmod +x $GITHUB_WORKSPACE/$CLASH_CORE && $GITHUB_WORKSPACE/$CLASH_CORE
-
+        
     - name: SSH connection to Actions  # SSH连接到Actions
       uses: P3TERX/ssh2actions@v1.0.0
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
